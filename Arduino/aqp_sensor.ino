@@ -1,6 +1,6 @@
 /**
  aqp_sensors / Sensor node
- by Casa Corsini Team Oct.2016
+ by Casa Corsini Team Oct.2016 - V0.1 
  
  Sensor node control for the aqp_sensors.
  
@@ -15,11 +15,64 @@
  GNU General Public License for more details.
  You should have received a copy of the GNU General Public License
  along with ClEnSensors.  If not, see <http://www.gnu.org/licenses/>.
+
+  MQTT library: https://goo.gl/cM5rK7
+  MQTT Broker: cloudmqtt
+    Chrome: MQTTLens
+  Display: SSD1306
+    Library: https://goo.gl/5KHEsx
  */
- 
+
+// <--------- Include the correct MQTT library --------->
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+// <--------- Include the correct display library --------->
+#define oled
+#ifdef oled
+//#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
+#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"` 
+#endif
+// < --------- Include DHT11 library --------->
 #include <dht11.h>
-#include <SoftwareSerial.h>
- 
+dht11 DHT;  // nel mio era così
+// dht11 dht1;
+#define DHT11_PIN 4
+
+//< -------------- The Debug --------------------------- >
+//#define DEBUG    // uncomment to enable serial debug
+#ifdef DEBUG
+#define DEBUG_PRINT(x)     Serial.print (x)
+#define DEBUG_PRINTLN(x)  Serial.println (x)
+#else
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
+#endif
+//--------------------------------------------------
+// Own wifi
+const char* ssid = "FreeLepida_Fiorano";
+const char* password = "";
+// MQTTcloud
+const char* mqtt_server = "m20.cloudmqtt.com";
+#define port 17394
+// ACLs
+const char* username = "ESP8266";
+const char* passw = "corsini";
+//---------------- MQTT ----------------------------
+WiFiClient espClient;
+PubSubClient client(espClient);
+char msg[50];
+int value = 0;
+
+int temp = 0;
+int hum = 0;
+
+#ifdef oled
+// Include custom images if you want
+// #include "images.h"
+// Initialize the OLED display using Wire library
+SSD1306  display(0x3c, D3, D5);
+#endif
+
 #define LED_BUILTIN 13
 #define EXT_LED 11
 #define PIN_DHT11 4
@@ -48,7 +101,7 @@
 //char msg_buffer[MAX_RXMSG_LEN];
 
 // The global variable with the message to MQTT
-String tx_message;
+//String tx_message;
 
 byte heart = 0;
 byte ext_led_on = 0;
@@ -63,7 +116,63 @@ String msg_type = "";
 String msg_data = "";
  */
 
-dht11 dht1;
+void setup_wifi() {
+
+  delay(10);
+  // We start by connecting to a WiFi network
+  DEBUG_PRINTLN();
+  DEBUG_PRINT("Connecting to ");
+  DEBUG_PRINTLN(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    DEBUG_PRINT(".");
+  }
+
+  DEBUG_PRINTLN("");
+  DEBUG_PRINTLN("WiFi connected");
+  DEBUG_PRINTLN("IP address: ");
+  DEBUG_PRINTLN(WiFi.localIP());
+}
+
+  /* Not used in this version */
+//void callback(char* topic, byte* payload, unsigned int length) {
+//  DEBUG_PRINT("Message arrived [");
+//  DEBUG_PRINT(topic);
+//  DEBUG_PRINT("] ");
+//  for (int i = 0; i < length; i++) {
+//    DEBUG_PRINT((char)payload[i]);
+//  }
+//  DEBUG_PRINTLN();
+//
+//  //if ((char)payload[0] == '1') {}
+//
+//}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    DEBUG_PRINT("Attempting MQTT connection...");
+    // Attempt to connect
+    //boolean connect (clientID, username, password)
+    if (client.connect("clientID", username, passw)) {
+      DEBUG_PRINTLN("connected");
+      // Once connected, publish an announcement...
+      client.publish("outTopic", "hello world");
+      // ... and resubscribe
+      // NOT USED IN THIS VERSION
+      // client.subscribe("inTopic");
+    } else {
+      DEBUG_PRINT("failed, rc=");
+      DEBUG_PRINT(client.state());
+      DEBUG_PRINTLN(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
 
 /* NODE SETUP */
 void setup()
@@ -82,9 +191,20 @@ void setup()
   byte bh = EEPROM.read(ADDRESS_CICLI_SLEEP+1);//2 bytes are read!
   cicli_sleep = bl + 0xFF * bh;
   */
-  
+  #ifdef DEBUG
   Serial.begin(115200);
+  #endif
+  setup_wifi();
+  client.setServer(mqtt_server, port);
+  // NOT USED IN THIS VERSION
+  // client.setCallback(callback);
   
+  #ifdef oled
+  // Initialising the UI will init the display too.
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_16);
+  #endif
   pinMode(LED_BUILTIN, OUTPUT); //Heartbeat led pin 13
   pinMode(EXT_LED, OUTPUT);  //Auxiliary led pin 11
 
@@ -100,9 +220,28 @@ void setup()
   
 }
 
-/* MAIN LOOP */
+/* OLED DISPLAY */
+void drawText() {
+  // clear the display
+  display.clear();
+  // create more fonts at http://oleddisplay.squix.ch/
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  String disp_temp = String("Temperatura: ") + temp;
+  String disp_hum = String("Umidità: ") + hum;
+  //drawString(int16_t x, int16_t y, String text);
+  display.drawString(0, 0, disp_temp);
+  display.drawString(0, 20, disp_hum);
+  display.display();
+}
+
+/* ---------- MAIN LOOP ---------- */
 void loop()
 {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+  
   make_message(collect_measures());
   send_message();
   after_message();
@@ -117,6 +256,8 @@ void loop()
 */
 void make_message (String resp_data) 
 {  
+    // Converts the contents of a string as a C-style, null-terminated string.
+    snprintf (msg, 75, "Temperatura ed umidità:\n%s\n", resp_data.c_str());
   //tx_message = ...
 }
 
@@ -132,7 +273,9 @@ String collect_measures()
 
   //Add here the code that read the sensor and returns the
   //Measures in a string, formatted in some useful way...
-
+  // ----- DHT11  -----
+  DHT.read(DHT11_PIN);
+  measures = String(DHT.temperature)+"-"+String(DHT.humidity);
   return measures; 
 }
 
@@ -143,6 +286,9 @@ String collect_measures()
  */
 void after_message() {
   //to be used - if needed.
+  #ifdef oled
+  drawText();
+  #endif
 }
 
 /**
@@ -154,7 +300,9 @@ void send_message()
 
   //Add here the code that sends the message via network
   //In this case will be via MQTT/WiFi
-
+    DEBUG_PRINT("Publish message: ");
+    DEBUG_PRINTLN(msg);
+    client.publish("outTopic", msg);
 }
 
 /**
@@ -240,7 +388,7 @@ int serve()
   //Message is parsed
   parse_message();
   if ((msg_dest != BROADCAST) && (msg_dest != myID)) return NOT_MINE;
-  //Serial.print("MSGTYPE:"+msg_type);
+  //DEBUG_PRINT("MSGTYPE:"+msg_type);
   //Handles the IDNREQ Command
   if (msg_type.equals("IDNREQ")) {
     //Waits a time in seconds equal to myID - to avoid collision
