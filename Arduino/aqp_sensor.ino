@@ -1,3 +1,5 @@
+
+
 /**
  aqp_sensors / Sensor node
  by Casa Corsini Team Oct.2016 - V0.1 
@@ -23,55 +25,30 @@
     Library: https://goo.gl/5KHEsx
  */
 
-// <--------- Include the correct MQTT library --------->
-#include <ESP8266WiFi.h>
-#include <PubSubClient.h>
-// <--------- Include the correct display library --------->
-#define oled
-#ifdef oled
-//#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
-#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"` 
-#endif
-// < --------- Include DHT11 library --------->
-#include <dht11.h>
-dht11 DHT;  // nel mio era così
-// dht11 dht1;
-#define DHT11_PIN 4
-
-//< -------------- The Debug --------------------------- >
-//#define DEBUG    // uncomment to enable serial debug
+//< --- Serial debug setup --- >
+#define DEBUG    // uncomment to enable serial debug
 #ifdef DEBUG
-#define DEBUG_PRINT(x)     Serial.print (x)
-#define DEBUG_PRINTLN(x)  Serial.println (x)
+#define DEBUG_PRINT(x) Serial.print (x)
+#define DEBUG_PRINTLN(x) Serial.println (x)
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
 #endif
-//--------------------------------------------------
-// Own wifi
-const char* ssid = "FreeLepida_Fiorano";
-const char* password = "";
-// MQTTcloud
-const char* mqtt_server = "m20.cloudmqtt.com";
-#define port 17394
-// ACLs
-const char* username = "ESP8266";
-const char* passw = "corsini";
-//---------------- MQTT ----------------------------
-WiFiClient espClient;
-PubSubClient client(espClient);
-char msg[50];
-int value = 0;
+//-------------------------------
 
-int temp = 0;
-int hum = 0;
+// <--- Include the correct MQTT library --->
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 
+// <--- Include the correct display library --->
+//#define oled
 #ifdef oled
-// Include custom images if you want
-// #include "images.h"
-// Initialize the OLED display using Wire library
-SSD1306  display(0x3c, D3, D5);
+//#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
+#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"` 
 #endif
+
+// < --- Include DHT11 library --->
+#include <dht11.h>
 
 #define LED_BUILTIN 13
 #define EXT_LED 11
@@ -80,12 +57,16 @@ SSD1306  display(0x3c, D3, D5);
 #define SWSERIAL_TX 3 
 #define VALIM_ANALOG A4
 
+//other fixed values
+#define MAIN_CYCLE_DELAY 950
+#define CICLI_HEART 1
+
 /*
  * Not used in this version
 //EEPROM USED ADDRESSES
 #define ADDRESS_MYID 1
 #define ADDRESS_CICLI_SLEEP 2
-*/
+ */
 
 /*
  * Not used in this version
@@ -94,14 +75,35 @@ SSD1306  display(0x3c, D3, D5);
 #define UNHANDLED 2
 */
 
-//other fixed values
-#define MAIN_CYCLE_DELAY 950
-#define CICLI_HEART 1
+// ---- WiFi connection ----------
+const char* ssid = "FreeLepida_Fiorano";
+const char* password = "";
+WiFiClient espClient;
 
-//char msg_buffer[MAX_RXMSG_LEN];
+// ----- MQTT connection ---------
+const char* mqtt_server = "m20.cloudmqtt.com";
+#define port 17394
+// ACLs
+const char* username = "ESP8266";
+const char* passw = "corsini";
+PubSubClient mqtt_client(espClient);
+//-------- MQTT ------------------
 
+#ifdef oled
+// Include custom images if you want
+// #include "images.h"
+// Initialize the OLED display using Wire library
+SSD1306 display(0x3c, D3, D5);
+#endif
+
+dht11 DHT;
+
+//char msg[50];
 // The global variable with the message to MQTT
-//String tx_message;
+String tx_message = "";
+int value = 0;
+int temp = 0;
+int hum = 0;
 
 byte heart = 0;
 byte ext_led_on = 0;
@@ -117,7 +119,6 @@ String msg_data = "";
  */
 
 void setup_wifi() {
-
   delay(10);
   // We start by connecting to a WiFi network
   DEBUG_PRINTLN();
@@ -137,36 +138,38 @@ void setup_wifi() {
   DEBUG_PRINTLN(WiFi.localIP());
 }
 
-  /* Not used in this version */
-//void callback(char* topic, byte* payload, unsigned int length) {
-//  DEBUG_PRINT("Message arrived [");
-//  DEBUG_PRINT(topic);
-//  DEBUG_PRINT("] ");
-//  for (int i = 0; i < length; i++) {
-//    DEBUG_PRINT((char)payload[i]);
-//  }
-//  DEBUG_PRINTLN();
-//
-//  //if ((char)payload[0] == '1') {}
-//
-//}
+/*
+ * Not used in this version 
+void callback(char* topic, byte* payload, unsigned int length) {
+  DEBUG_PRINT("Message arrived [");
+  DEBUG_PRINT(topic);
+  DEBUG_PRINT("] ");
+  for (int i = 0; i < length; i++) {
+    DEBUG_PRINT((char)payload[i]);
+  }
+  DEBUG_PRINTLN();
+
+  //if ((char)payload[0] == '1') {}
+
+}
+*/
 
 void reconnect() {
   // Loop until we're reconnected
-  while (!client.connected()) {
-    DEBUG_PRINT("Attempting MQTT connection...");
-    // Attempt to connect
+  while (!mqtt_client.connected()) {
+    DEBUG_PRINT("Attempting MQTT connection");
+    //Attempt to connect
     //boolean connect (clientID, username, password)
-    if (client.connect("clientID", username, passw)) {
+    if (mqtt_client.connect("clientID", username, passw)) {
       DEBUG_PRINTLN("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic", "hello world");
+      mqtt_client.publish("outTopic", "hello world");
       // ... and resubscribe
       // NOT USED IN THIS VERSION
-      // client.subscribe("inTopic");
+      // mqtt_client.subscribe("inTopic");
     } else {
       DEBUG_PRINT("failed, rc=");
-      DEBUG_PRINT(client.state());
+      DEBUG_PRINT(mqtt_client.state());
       DEBUG_PRINTLN(" try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(5000);
@@ -195,9 +198,9 @@ void setup()
   Serial.begin(115200);
   #endif
   setup_wifi();
-  client.setServer(mqtt_server, port);
+  mqtt_client.setServer(mqtt_server, port);
   // NOT USED IN THIS VERSION
-  // client.setCallback(callback);
+  // mqtt_client.setCallback(callback);
   
   #ifdef oled
   // Initialising the UI will init the display too.
@@ -205,6 +208,7 @@ void setup()
   display.flipScreenVertically();
   display.setFont(ArialMT_Plain_16);
   #endif
+  
   pinMode(LED_BUILTIN, OUTPUT); //Heartbeat led pin 13
   pinMode(EXT_LED, OUTPUT);  //Auxiliary led pin 11
 
@@ -221,6 +225,7 @@ void setup()
 }
 
 /* OLED DISPLAY */
+#ifdef oled
 void drawText() {
   // clear the display
   display.clear();
@@ -233,14 +238,15 @@ void drawText() {
   display.drawString(0, 20, disp_hum);
   display.display();
 }
+#endif
 
 /* ---------- MAIN LOOP ---------- */
 void loop()
 {
-  if (!client.connected()) {
+  if (!mqtt_client.connected()) {
     reconnect();
   }
-  client.loop();
+  mqtt_client.loop();
   
   make_message(collect_measures());
   send_message();
@@ -256,9 +262,9 @@ void loop()
 */
 void make_message (String resp_data) 
 {  
-    // Converts the contents of a string as a C-style, null-terminated string.
-    snprintf (msg, 75, "Temperatura ed umidità:\n%s\n", resp_data.c_str());
-  //tx_message = ...
+  // Converts the contents of a string as a C-style, null-terminated string.
+  //snprintf (msg, 75, "Temperatura ed umidità:\n%s\n", resp_data.c_str());
+  tx_message = resp_data;
 }
 
 /**
@@ -274,9 +280,23 @@ String collect_measures()
   //Add here the code that read the sensor and returns the
   //Measures in a string, formatted in some useful way...
   // ----- DHT11  -----
-  DHT.read(DHT11_PIN);
+  DHT.read(PIN_DHT11);
   measures = String(DHT.temperature)+"-"+String(DHT.humidity);
   return measures; 
+}
+
+/**
+ Send a string message on the RF interface
+ */
+void send_message() 
+{
+  ext_led_on = 1;
+
+  //Add here the code that sends the message via network
+  //In this case will be via MQTT/WiFi
+    DEBUG_PRINT("Publish message: ");
+    DEBUG_PRINTLN(tx_message);
+    mqtt_client.publish("outTopic", tx_message.c_str());
 }
 
 /**
@@ -291,19 +311,6 @@ void after_message() {
   #endif
 }
 
-/**
- Send a string message on the RF interface
- */
-void send_message() 
-{
-  ext_led_on = 1;
-
-  //Add here the code that sends the message via network
-  //In this case will be via MQTT/WiFi
-    DEBUG_PRINT("Publish message: ");
-    DEBUG_PRINTLN(msg);
-    client.publish("outTopic", msg);
-}
 
 /**
  Heartbeat on the built_in Led + EXT_LED
