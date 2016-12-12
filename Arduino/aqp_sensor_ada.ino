@@ -1,6 +1,6 @@
 /*
   aqp_sensors / Sensor node with Adafruit MQTT
-  by Casa Corsini Team Oct.2016 - V0.1
+  by Casa Corsini Team Oct.2016 - V0.2
 
   Sensor node control for the aqp_sensors.
 
@@ -44,22 +44,22 @@
 //#define oled
 #ifdef oled
 //#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
-#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"` 
+#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
 #endif
 
 // < --- Include DHT11 library --->
 #include <dht11.h>
 
-#define LED_BUILTIN 13
-#define EXT_LED 11
+//#define LED_BUILTIN 13
+//#define EXT_LED 11
 #define PIN_DHT11 4
-#define SWSERIAL_RX 2
-#define SWSERIAL_TX 3
-#define VALIM_ANALOG A4
-
-//other fixed values
-#define MAIN_CYCLE_DELAY 950
-#define CICLI_HEART 1
+//#define SWSERIAL_RX 2
+//#define SWSERIAL_TX 3
+//#define VALIM_ANALOG A4
+//
+////other fixed values
+//#define MAIN_CYCLE_DELAY 950
+//#define CICLI_HEART 1
 
 /*
    Not used in this version
@@ -82,8 +82,8 @@
 // ----- MQTT connection ---------
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883                   // use 8883 for SSL
-#define AIO_USERNAME    "xxx"
-#define AIO_KEY         "xxx"
+#define AIO_USERNAME    "MarkCalaway"
+#define AIO_KEY         "8533e8dbf95646858144232621bb963d"
 WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 //----------------------------------
@@ -99,13 +99,6 @@ Adafruit_MQTT_Publish dht = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dh
 
 /************************************************************/
 
-#ifdef oled
-// Include custom images if you want
-// #include "images.h"
-// Initialize the OLED display using Wire library
-SSD1306 display(0x3c, D3, D5);
-#endif
-
 dht11 DHT;
 
 //char msg[50];
@@ -117,7 +110,14 @@ int hum = 0;
 
 byte heart = 0;
 byte ext_led_on = 0;
-byte cnt_heart = CICLI_HEART;
+//byte cnt_heart = CICLI_HEART;
+
+#ifdef oled
+// Include custom images if you want
+// #include "images.h"
+// Initialize the OLED display using Wire library
+SSD1306 display(0x3c, D3, D5);
+#endif
 
 /*
    Not used in this version
@@ -234,9 +234,8 @@ void setup()
   display.setFont(ArialMT_Plain_16);
 #endif
 
-  pinMode(LED_BUILTIN, OUTPUT); //Heartbeat led pin 13
-  pinMode(EXT_LED, OUTPUT);  //Auxiliary led pin 11
-
+  //pinMode(LED_BUILTIN, OUTPUT); //Heartbeat led pin 13
+  //pinMode(EXT_LED, OUTPUT);  //Auxiliary led pin 11
   //....
 
   /* Not used in this version
@@ -252,7 +251,7 @@ void setup()
 
 /* ---------- MAIN LOOP ---------- */
 void loop() {
-  Serial.println("lol");
+  //Serial.println("lol");
   MQTT_connect();
 
   // this is our 'wait for incoming subscription packets' busy subloop
@@ -270,8 +269,8 @@ void loop() {
   send_message();
   after_message();
 
-  heartbeat();
-  delay(MAIN_CYCLE_DELAY);
+  //heartbeat();
+  //delay(MAIN_CYCLE_DELAY);
 }
 
 /**
@@ -333,18 +332,18 @@ void after_message() {
 /**
   Heartbeat on the built_in Led + EXT_LED
 */
-void heartbeat()
-{
-  cnt_heart--;
-  if (cnt_heart == 0) {
-    heart++;
-    digitalWrite(LED_BUILTIN, bitRead(heart, 0));
-    digitalWrite(EXT_LED, bitRead(ext_led_on, 0));
-    if (ext_led_on) ext_led_on = 0;
-
-    cnt_heart = CICLI_HEART;
-  }
-}
+//void heartbeat()
+//{
+//  cnt_heart--;
+//  if (cnt_heart == 0) {
+//    heart++;
+//    digitalWrite(LED_BUILTIN, bitRead(heart, 0));
+//    digitalWrite(EXT_LED, bitRead(ext_led_on, 0));
+//    if (ext_led_on) ext_led_on = 0;
+//
+//    cnt_heart = CICLI_HEART;
+//  }
+//}
 
 //*** Below code is for possible future use - please keep it. ***//
 
@@ -532,4 +531,3 @@ void heartbeat()
   send_message();
   }
 */
-
