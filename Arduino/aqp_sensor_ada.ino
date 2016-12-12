@@ -92,7 +92,9 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 
 // Setup a feed called 'dht11' for publishing.
 // Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish dht = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht");
+Adafruit_MQTT_Publish dht_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_temperature");
+
+Adafruit_MQTT_Publish dht_humidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_humidity");
 
 // Setup a feed called 'onoff' for subscribing to changes.
 // Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
@@ -186,8 +188,7 @@ void drawText() {
 */
 
 /* NODE SETUP */
-void setup()
-{
+void setup(){
   /* Not used in this version
 
     //NOTE! The ID of this card must be PRE-programmed by writing
@@ -234,6 +235,7 @@ void setup()
   display.setFont(ArialMT_Plain_16);
 #endif
 
+// This block have a glitch
   //pinMode(LED_BUILTIN, OUTPUT); //Heartbeat led pin 13
   //pinMode(EXT_LED, OUTPUT);  //Auxiliary led pin 11
   //....
@@ -290,30 +292,30 @@ void make_message (String resp_data)
   In the PoC version, only temperature and humidity are read from one or two DHT22 sensors
   and returned as digital sources #4, #5 (and #6, #7 if two sensors are used).
 */
-String collect_measures()
-{
+String collect_measures(){
   String measures = "";
 
   //Add here the code that read the sensor and returns the
   //Measures in a string, formatted in some useful way...
   // ----- DHT11  -----
   DHT.read(PIN_DHT11);
-  measures = String(DHT.temperature) + "-" + String(DHT.humidity);
+  //measures = String(DHT.temperature) + "-" + String(DHT.humidity);
   return measures;
 }
 
 /**
   Send a string message on the RF interface
 */
-void send_message()
-{
-  ext_led_on = 1;
+void send_message(){
+  //ext_led_on = 1;
 
   //Add here the code that sends the message via network
   //In this case will be via MQTT/WiFi
   DEBUG_PRINT("Publish message: ");
   DEBUG_PRINTLN(tx_message);
-  dht.publish(tx_message.c_str());
+  dht_temperature.publish(DHT.temperature);
+  dht_humidity.publish(DHT.humidity);
+  //dht.publish(tx_message.c_str());
 }
 
 /**
