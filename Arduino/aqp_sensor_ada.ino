@@ -1,6 +1,6 @@
 /*
   aqp_sensors / Sensor node with Adafruit MQTT
-  by Casa Corsini Team Oct.2016 - V0.2
+  by Casa Corsini Team Dec.2016 
 
   Sensor node control for the aqp_sensors.
 
@@ -15,13 +15,6 @@
   GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
   along with ClEnSensors.  If not, see <http://www.gnu.org/licenses/>.
-
-  ----> MQTT Adafruit library: https://goo.gl/4ewcc2
-            Adafruit tutorial: https://goo.gl/BVXdso
-  ----> MQTT Broker: io.adafruit.com
-            Chrome: MQTTLens
-  ----> Display: SSD1306
-            Library: https://goo.gl/5KHEsx
 */
 
 //< --- Serial debug setup --- >
@@ -36,23 +29,36 @@
 //-------------------------------
 
 // <--- Include the correct MQTT Adafruit library --->
+/*  ----> MQTT Adafruit library: https://goo.gl/4ewcc2
+            Adafruit tutorial: https://goo.gl/BVXdso
+  ----> MQTT Broker: io.adafruit.com
+            Chrome: MQTTLens
+*/
 #include <ESP8266WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
 // <--- Include the correct display library --->
+/*  ----> Display: SSD1306
+            Library: https://goo.gl/5KHEsx
+            we are using Upgrade from 2.0 to 3.0, https://goo.gl/3LljMv
+*/
 //#define oled
 #ifdef oled
-//#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
-#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
+#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"` 
 #endif
 
 // < --- Include DHT11 library --->
 #include <dht11.h>
 
+// < --- Include I2C library --->
+// https://goo.gl/xAgrmO
+#include <Wire.h>
+
+// Node MCU 0.9 Pin mapping: https://goo.gl/bZ11wH
 //#define LED_BUILTIN 13
 //#define EXT_LED 11
-#define PIN_DHT11 4
+#define PIN_DHT11 4  // real D2
 //#define SWSERIAL_RX 2
 //#define SWSERIAL_TX 3
 //#define VALIM_ANALOG A4
@@ -76,8 +82,8 @@
 */
 
 // ---- WiFi connection ----------
-#define WLAN_SSID       "xxx"
-#define WLAN_PASS       "xxx"
+#define WLAN_SSID       "FreeLepida_Fiorano"
+#define WLAN_PASS       ""
 
 // ----- MQTT connection ---------
 #define AIO_SERVER      "io.adafruit.com"
@@ -91,10 +97,15 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 /****************************** Feeds ***************************************/
 
 // Setup a feed called 'dht11' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
 Adafruit_MQTT_Publish dht_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_temperature");
 
 Adafruit_MQTT_Publish dht_humidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_humidity");
+
+Adafruit_MQTT_Publish Ossigeno_dish = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Ossigeno_dish");
+
+Adafruit_MQTT_Publish PH = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/PH");
+
+Adafruit_MQTT_Publish Conducibilita = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Conducibilita");
 
 // Setup a feed called 'onoff' for subscribing to changes.
 // Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
@@ -533,3 +544,4 @@ void after_message() {
   send_message();
   }
 */
+
