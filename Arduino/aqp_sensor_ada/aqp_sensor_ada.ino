@@ -251,47 +251,6 @@ void loop() {
   delay(MAIN_CYCLE_DELAY); 
 }
 
-/**
- * Connect or re-connect to the MQTT Server
- * This is executed at every cycle to manage possible connection loss
- * It tries endlessly until successful
- */
-void MQTT_connect() {
-  int8_t ret;
-
-  // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
-
-  Serial.print("Connecting to MQTT... ");
-
-  //Repeats until connection is OK. Reset the MCU to break.
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-    Serial.println(mqtt.connectErrorString(ret));
-    Serial.println("Retrying MQTT connection in 5 seconds...");
-    mqtt.disconnect();
-    delay(5000);  // wait 5 seconds
-  }
-  Serial.println("MQTT Connected!");
-}
-
-/* OLED DISPLAY */
-#ifdef oled
-void drawText() {
-  // clear the display
-  display.clear();
-  // create more fonts at http://oleddisplay.squix.ch/
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  String disp_temp = String("Temperatura: ") + temp;
-  String disp_hum = String("Umidità: ") + hum;
-  //drawString(int16_t x, int16_t y, String text);
-  display.drawString(0, 0, disp_temp);
-  display.drawString(0, 20, disp_hum);
-  display.display();
-}
-#endif
-
 /*
   Not used in this version
   void callback(char* topic, byte* payload, unsigned int length) {
