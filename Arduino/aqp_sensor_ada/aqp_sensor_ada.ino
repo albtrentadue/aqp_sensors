@@ -18,7 +18,7 @@
 */
 
 //< --- Serial debug setup --- >
-#define DEBUG    // uncomment to enable serial debug
+#define DEBUG   // uncomment to enable serial debug
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print (x)
 #define DEBUG_PRINTLN(x) Serial.println (x)
@@ -28,13 +28,15 @@
 #endif
 //-------------------------------
 
+// <--- ESP8266 + WiFi libraries --->
+#include <ESP8266WiFi.h>
+
 // <--- Include the correct MQTT Adafruit library --->
 /*  ----> MQTT Adafruit library: https://goo.gl/4ewcc2
             Adafruit tutorial: https://goo.gl/BVXdso
-  ----> MQTT Broker: io.adafruit.com
+    ----> MQTT Broker: io.adafruit.com
             Chrome: MQTTLens
 */
-#include <ESP8266WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
@@ -55,58 +57,66 @@
 // https://goo.gl/xAgrmO
 #include <Wire.h>
 
-// < --------------- ORT I2C --------------- >
-#define address 98               //default I2C ID number for EZO ORP Circuit.
-String ORP_data;
-// < --------------------------------------- >
 
 // Node MCU 0.9 Pin mapping: https://goo.gl/bZ11wH
-//#define LED_BUILTIN 13
+#define LED_ONCARD D0
 //#define EXT_LED 11
 #define PIN_DHT11 4  // real D2
 //#define SWSERIAL_RX 2
 //#define SWSERIAL_TX 3
-//#define VALIM_ANALOG A4
 //
-////other fixed values
-//#define MAIN_CYCLE_DELAY 950
-//#define CICLI_HEART 1
+// cycle counters 
+#define MAIN_CYCLE_DELAY 10
+#define CICLI_HEART 1
+
+//EZO Dissolved Oxiygen Sensor from Atlas Scientific 
+//https://www.atlas-scientific.com/dissolved-oxygen.html
+#define DO_ADDRESS 97
+// < --------------- ORT I2C --------------- >
+#define ORP_ADDRESS 98               //default I2C ID number for EZO ORP Circuit.
+// < --------------------------------------- >
+#define SNS_READ_COMMAND 'R'
+#define SNS_CALIBRATE_COMMAND 'C'
+#define SNS_CAL_READ_TIME 1800
+#define SNS_OTHER_TIME 300
 
 /*
-   Not used in this version
+  Not used in this version
   //EEPROM USED ADDRESSES
   #define ADDRESS_MYID 1
   #define ADDRESS_CICLI_SLEEP 2
 */
-
 /*
-   Not used in this version
+  Not used in this version
   #define RESP_OK 0
   #define NOT_MINE 1
   #define UNHANDLED 2
 */
 
-// ---- WiFi connection ----------
-#define WLAN_SSID       "WGR614V9"
-#define WLAN_PASS       "arbibbio123"
+// TODO: Configurable wifi settings
+#define WLAN_SSID       "FreeLepida_Fiorano"
+#define WLAN_PASS       ""
 
-// ----- MQTT connection ---------
+// ---- MQTT connection ---------
+// TODO: Configurable MQTT settings
 #define AIO_SERVER      "io.adafruit.com"
-#define AIO_SERVERPORT  1883                   // use 8883 for SSL
+#define AIO_SERVERPORT  1883  // use 8883 for SSL
 #define AIO_USERNAME    "MarkCalaway"
 #define AIO_KEY         "8533e8dbf95646858144232621bb963d"
+
 WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
-//----------------------------------
 
 /****************************** Feeds ***************************************/
 
 // Setup a feed called 'dht11' for publishing.
-//Adafruit_MQTT_Publish dht_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_temperature");
+Adafruit_MQTT_Publish dht_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_temperature");
 
-//Adafruit_MQTT_Publish dht_humidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_humidity");
+Adafruit_MQTT_Publish dht_humidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dht_humidity");
 
-Adafruit_MQTT_Publish Ossigeno_dish = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Ossigeno_dish");
+Adafruit_MQTT_Publish diss_oxygen = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Ossigeno_dish");
+
+Adafruit_MQTT_Publish or_potential = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Potenziale_OR");
 
 Adafruit_MQTT_Publish PH = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/PH");
 
@@ -119,26 +129,38 @@ Adafruit_MQTT_Publish Conducibilita = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME 
 
 dht11 DHT;
 
+//The array holding the Dissolved Oxygen sensor data
+char DO_data[20]; 
+
 //char msg[50];
 // The global variable with the message to MQTT
-String tx_message = "";
-int value = 0;
-int temp = 0;
-int hum = 0;
+//String tx_message = "";
 
-byte heart = 0;
+// These global vars are used to communicate
+// values from the functions to the send_message() function.
+int DHT_temp = 0;
+int DHT_hum = 0;
+float DO_float;
+float DO_sat_float;
+float ORP_float;
+
+/* 
+   Not used in this session 
 byte ext_led_on = 0;
-//byte cnt_heart = CICLI_HEART;
+ */
+byte heart = 0;
+byte cnt_heart = CICLI_HEART;
 
 #ifdef oled
 // Include custom images if you want
 // #include "images.h"
 // Initialize the OLED display using Wire library
+// D3=GPIO0 - D5=GPIO14
 SSD1306 display(0x3c, D3, D5);
 #endif
 
 /*
-   Not used in this version
+  Not used in this version
 
   String msg_sender = "";
   String msg_dest = "";
@@ -200,7 +222,7 @@ void setup() {
   Serial.println();
 
   Serial.println("WiFi connected");
-  Serial.println("IP address: "); Serial.println(WiFi.localIP());
+  Serial.print("IP address: "); Serial.println(WiFi.localIP());
 
   // Setup MQTT subscription for onoff feed.
   // mqtt.subscribe(&onoffbutton);
@@ -224,65 +246,88 @@ void setup() {
 
     int nr = receive_msg();
   */
-
 }
-
 
 /* ---------- MAIN LOOP ---------- */
 void loop() {
   //Serial.println("lol");
   MQTT_connect();
 
-  // this is our 'wait for incoming subscription packets' busy subloop
-  // try to spend your time here
+  /* 
+   this is our 'wait for incoming subscription packets' busy subloop
+   try to spend your time here
 
-  //  Adafruit_MQTT_Subscribe *subscription;
-  //  while ((subscription = mqtt.readSubscription(5000))) {
-  //    if (subscription == &onoffbutton) {
-  //      Serial.print(F("Got: "));
-  //      Serial.println((char *)onoffbutton.lastread);
-  //    }
-  //  }
+  Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(5000))) {
+    if (subscription == &onoffbutton) {
+      Serial.print(F("Got: "));
+      Serial.println((char *)onoffbutton.lastread);
+    } 
+  }
+  */
 
-  make_message(collect_measures());
+  collect_measures();
+  make_message();
   send_message();
   after_message();
 
-  //heartbeat();
-  //delay(MAIN_CYCLE_DELAY);
+  heartbeat();
+  delay(MAIN_CYCLE_DELAY); 
 }
 
-/**
-  Builds the string 'tx_message' with the message to be
-  transmitted via network
+/*
+  Not used in this version
+  void callback(char* topic, byte* payload, unsigned int length) {
+  DEBUG_PRINT("Message arrived [");
+  DEBUG_PRINT(topic);
+  DEBUG_PRINT("] ");
+  for (int i = 0; i < length; i++) {
+    DEBUG_PRINT((char)payload[i]);
+  }
+  DEBUG_PRINTLN();
+
+  //if ((char)payload[0] == '1') {}
+  }
 */
-void make_message (String resp_data)
-{
-  // Converts the contents of a string as a C-style, null-terminated string.
-  //snprintf (msg, 75, "Temperatura ed umidità:\n%s\n", resp_data.c_str());
-  tx_message = resp_data;
-}
+
 
 /**
   Load the measures as they are configured in the board.
 
-  In the PoC version, only temperature and humidity are read from one or two DHT22 sensors
-  and returned as digital sources #4, #5 (and #6, #7 if two sensors are used).
+  In the this version, the following measurements are made
+  - DHT11 temperature and humidity
+  - Atlas Scientifi EZO Dissolved Oxygen values 
+  
 */
-String collect_measures() {
+void collect_measures(){
   String measures = "";
 
-  //Add here the code that read the sensor and returns the
-  //Measures in a string, formatted in some useful way...
+  //Add here the code that read the sensors and returns the
+  //measures in dedicated global strings
+  
   // ----- DHT11  -----
   DHT.read(PIN_DHT11);
-  //measures = String(DHT.temperature) + "-" + String(DHT.humidity);
 
   // < ---------- ORP I2C ---------- >
-  ORP_data = ORT_I2C(); 
-  return measures;
+  // The ORP_float global var will hold the measure
+  ORP_I2C(); 
+  // < ---------- OXY I2C ---------- >
+  // The DO_float global var will hold the measure
+  OXY_I2C();
+  DHT_temp = DHT.temperature;
+  DHT_hum = DHT.humidity;
 }
 // < ---------- collect_measures end ---------- >
+
+/**
+  Builds the string '' with the message to be
+  transmitted via a centralized communication channel.
+*/
+void make_message ()
+{
+  // To be used in case of communication over a single channel 
+}
+
 
 /**
   Send a string message on the RF interface
@@ -292,12 +337,10 @@ void send_message() {
 
   //Add here the code that sends the message via network
   //In this case will be via MQTT/WiFi
-  DEBUG_PRINT("Publish message: ");
-  DEBUG_PRINTLN(tx_message);
- // dht_temperature.publish(DHT.temperature);
-  //dht_humidity.publish(DHT.humidity);
-  Ossigeno_dish.publish(ORP_data.c_str());
-  //dht.publish(tx_message.c_str());
+  or_potential.publish(ORP_float);
+  diss_oxygen.publish(DO_float);
+  dht_temperature.publish(DHT_temp);
+  dht_humidity.publish(DHT_hum);
 }
 
 /**
@@ -312,22 +355,21 @@ void after_message() {
 #endif
 }
 
-
 /**
   Heartbeat on the built_in Led + EXT_LED
 */
-//void heartbeat()
-//{
-//  cnt_heart--;
-//  if (cnt_heart == 0) {
-//    heart++;
-//    digitalWrite(LED_BUILTIN, bitRead(heart, 0));
-//    digitalWrite(EXT_LED, bitRead(ext_led_on, 0));
-//    if (ext_led_on) ext_led_on = 0;
-//
-//    cnt_heart = CICLI_HEART;
-//  }
-//}
+void heartbeat()
+{
+  cnt_heart--;
+  if (cnt_heart == 0) {
+    heart++;
+    digitalWrite(LED_ONCARD, bitRead(heart, 0));
+    //digitalWrite(EXT_LED, bitRead(ext_led_on, 0));
+    //if (ext_led_on) ext_led_on = 0;
+
+    cnt_heart = CICLI_HEART;
+  }
+}
 
 //*** Below code is for possible future use - please keep it. ***//
 

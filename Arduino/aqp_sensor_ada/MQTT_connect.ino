@@ -1,4 +1,8 @@
-//
+/**
+ * Connect or re-connect to the MQTT Server
+ * This is executed at every cycle to manage possible connection loss
+ * It tries endlessly until successful
+ */
 void MQTT_connect() {
   int8_t ret;
 

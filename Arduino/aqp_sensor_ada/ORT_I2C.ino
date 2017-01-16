@@ -13,7 +13,7 @@
  *    - Sleep
  *    - Status
  */
-String ORT_I2C() {
+void ORP_I2C() {
   
   //char computerdata[20];           //we make a 20 byte character array to hold incoming data from a pc/mac/other.
   byte received_from_computer = 0; //we need to know how many characters have been received.
@@ -32,38 +32,36 @@ String ORT_I2C() {
     //else time_ = 300;                                                     //if any other command has been sent we wait only 300ms.
 
     // <----- Command ---->
-    char computerdata ='R';
+    char computerdata = SNS_READ_COMMAND;
     
-    Wire.beginTransmission(address); //call the circuit by its ID number.
+    Wire.beginTransmission(ORP_ADDRESS); //call the circuit by its ID number.
     Wire.write(computerdata);        //transmit the command that was sent through the serial port.
     Wire.endTransmission();          //end the I2C data transmission.
 
     //if (strcmp(computerdata, "sleep") != 0) {  //if the command that has been sent is NOT the sleep command, wait the correct amount of time and request data.
-
-      //delay(time_);                    //wait the correct amount of time for the circuit to complete its instruction.
       
       // Read and calibration request much time
-      if (computerdata == 'C' || computerdata == 'R')delay(1800);
-      else  delay(300);
+      if (computerdata == SNS_CALIBRATE_COMMAND || computerdata == SNS_READ_COMMAND) delay(SNS_CAL_READ_TIME);
+      else  delay(SNS_OTHER_TIME);
       
-      Wire.requestFrom(address, 20, 1); //call the circuit and request 20 bytes (this may be more than we need)
+      Wire.requestFrom(ORP_ADDRESS, 20, 1); //call the circuit and request 20 bytes (this may be more than we need)
       code = Wire.read();             //the first byte is the response code, we read this separately.
 
       switch (code) {                 //switch case based on what the response code is.
         case 1:                       //decimal 1.
-          Serial.println("ORT Success");  //means the command was successful.
+          Serial.println("ORP Success");  //means the command was successful.
           break;                        //exits the switch case.
 
         case 2:                        //decimal 2.
-          Serial.println("ORT Failed");    //means the command has failed.
+          Serial.println("ORP Failed");    //means the command has failed.
           break;                         //exits the switch case.
 
         case 254:                      //decimal 254.
-          Serial.println("ORT Pending");   //means the command has not yet been finished calculating.
+          Serial.println("ORP Pending");   //means the command has not yet been finished calculating.
           break;                         //exits the switch case.
 
         case 255:                      //decimal 255.
-          Serial.println("ORT No Data");   //means there is no further data to send.
+          Serial.println("ORP No Data");   //means there is no further data to send.
           break;                       //exits the switch case.
       }
 
@@ -80,7 +78,7 @@ String ORT_I2C() {
 
       Serial.println(ORP_data);          //print the data.
     //}
-    return ORP_data;
+    ORP_float = atof(ORP_data);
  // }
-  // < ---------- ORT end ---------- >
+  // < ---------- ORP end ---------- >
 }
