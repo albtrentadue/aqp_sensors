@@ -15,14 +15,12 @@
  */
 void ORP_I2C() {
   
-  //char computerdata[20];           //we make a 20 byte character array to hold incoming data from a pc/mac/other.
+  //char computerdata[20];         //we make a 20 byte character array to hold incoming data from a pc/mac/other.
   byte received_from_computer = 0; //we need to know how many characters have been received.
   byte code = 0;                   //used to hold the I2C response code.
   char ORP_data[20];               //we make a 20 byte character array to hold incoming data from the ORP circuit.
   byte in_char = 0;                //used as a 1 byte buffer to store in bound bytes from the ORP Circuit.
   byte i = 0;                      //counter used for ORP_data array.
-  int time_ = 1800;                //used to change the delay needed depending on the command sent to the EZO Class ORP Circuit.
-  float ORP_float;                 //float var used to hold the float value of the ORP.
   
   //if (Serial.available() > 0) {                                           //if data is holding in the serial buffer
     //received_from_computer = Serial.readBytesUntil(13, computerdata, 20); //we read the data sent from the serial monitor(pc/mac/other) until we see a <CR>. We also count how many characters have been received.
@@ -49,19 +47,19 @@ void ORP_I2C() {
 
       switch (code) {                 //switch case based on what the response code is.
         case 1:                       //decimal 1.
-          Serial.println("ORP Success");  //means the command was successful.
+          DEBUG_PRINTLN("ORP Success");  //means the command was successful.
           break;                        //exits the switch case.
 
         case 2:                        //decimal 2.
-          Serial.println("ORP Failed");    //means the command has failed.
+          DEBUG_PRINTLN("ORP Failed");    //means the command has failed.
           break;                         //exits the switch case.
 
         case 254:                      //decimal 254.
-          Serial.println("ORP Pending");   //means the command has not yet been finished calculating.
+          DEBUG_PRINTLN("ORP Pending");   //means the command has not yet been finished calculating.
           break;                         //exits the switch case.
 
         case 255:                      //decimal 255.
-          Serial.println("ORP No Data");   //means there is no further data to send.
+          DEBUG_PRINTLN("ORP No Data");   //means there is no further data to send.
           break;                       //exits the switch case.
       }
 

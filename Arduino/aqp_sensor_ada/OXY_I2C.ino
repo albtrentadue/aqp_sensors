@@ -21,41 +21,31 @@ void OXY_I2C() {
   if (computerdata == SNS_CALIBRATE_COMMAND || computerdata == SNS_READ_COMMAND) delay(SNS_CAL_READ_TIME);
   else  delay(SNS_OTHER_TIME);
 
-  //call the circuit and request 20 bytes (this may be more than we need)
-  Wire.requestFrom(DO_ADDRESS, 20, 1);
-  //the first byte is the response code, we read this separately.                                   
-  code = Wire.read();
+  Wire.requestFrom(DO_ADDRESS, 20, 1);  //call the circuit and request 20 bytes (this may be more than we need)
+  code = Wire.read();            //the first byte is the response code, we read this separately.                                   
 
-  //switch case based on what the response code is.
-  switch (code) {                                                       
+  switch (code) {                //switch case based on what the response code is.                                       
     case 1:
-      //means the command was successful.
-      DEBUG_PRINTLN("Success");
+      DEBUG_PRINTLN("Success");  //means the command was successful.
       break;
     case 2:
-      //means the command has failed.
-      DEBUG_PRINTLN("Failed");
+      DEBUG_PRINTLN("Failed");   //means the command has failed.
       break;
     case 254:
-      //means the command has not yet been finished calculating.
-      DEBUG_PRINTLN("Pending");
+      DEBUG_PRINTLN("Pending");  //means the command has not yet been finished calculating.
       break;
     case 255:
-      //means there is no further data to send.
-      DEBUG_PRINTLN("No Data");
+      DEBUG_PRINTLN("No Data");  //means there is no further data to send.
       break;
   }
 
-  //are there bytes to receive.
-  while (Wire.available()) {
+  while (Wire.available()) {     //are there bytes to receive.
     in_char = Wire.read();
     DO_data[idx] = in_char;
     idx += 1;
-    //if we see that we have been sent a null command.
-    if (in_char == 0) {                                                 
+    if (in_char == 0) {          //if we see that we have been sent a null command.
       idx = 0;
-      //end the I2C data transmission.                                                            
-      Wire.endTransmission();
+      Wire.endTransmission();    //end the I2C data transmission.
       break;
     }
   }
@@ -109,7 +99,7 @@ void parse_oxygen_values() {
     Serial.println(sat);
     //Put the values into floating point
     DO_float=atof(DO);
-    DO_sat_float=atof(sat);
+    //DO_sat_float=atof(sat);
 
     comma = false;
   }
