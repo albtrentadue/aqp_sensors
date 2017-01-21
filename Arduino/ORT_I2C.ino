@@ -33,8 +33,8 @@ void ORP_I2C() {
     char computerdata = SNS_READ_COMMAND;
     
     Wire.beginTransmission(ORP_ADDRESS); //call the circuit by its ID number.
-    Wire.write(computerdata);        //transmit the command that was sent through the serial port.
-    Wire.endTransmission();          //end the I2C data transmission.
+    Wire.write(computerdata);            //transmit the command that was sent through the serial port.
+    Wire.endTransmission();              //end the I2C data transmission.
 
     //if (strcmp(computerdata, "sleep") != 0) {  //if the command that has been sent is NOT the sleep command, wait the correct amount of time and request data.
       
@@ -43,24 +43,29 @@ void ORP_I2C() {
       else  delay(SNS_OTHER_TIME);
       
       Wire.requestFrom(ORP_ADDRESS, 20, 1); //call the circuit and request 20 bytes (this may be more than we need)
-      code = Wire.read();             //the first byte is the response code, we read this separately.
+      code = Wire.read();                   //the first byte is the response code, we read this separately.
 
-      switch (code) {                 //switch case based on what the response code is.
-        case 1:                       //decimal 1.
-          DEBUG_PRINTLN("ORP Success");  //means the command was successful.
-          break;                        //exits the switch case.
+      switch (code) {                       //switch case based on what the response code is.
+        case 1:                             //decimal 1.
+          Serial.println("ORP Success");    //means the command was successful.
+          break;                            //exits the switch case.
+          
+        case 2:                             //decimal 2.
+          Serial.println("ORP Failed");     //means the command has failed.
+          break;                            //exits the switch case.
 
-        case 2:                        //decimal 2.
-          DEBUG_PRINTLN("ORP Failed");    //means the command has failed.
-          break;                         //exits the switch case.
+        case 254:                           //decimal 254.
+          Serial.println("ORP Pending");    //means the command has not yet been finished calculating.
+          break;                            //exits the switch case.
 
-        case 254:                      //decimal 254.
-          DEBUG_PRINTLN("ORP Pending");   //means the command has not yet been finished calculating.
-          break;                         //exits the switch case.
+        case 255:                           //decimal 255.
+          Serial.println("ORP No Data");    //means there is no further data to send.
+          break;                            //exits the switch case.
+      }
 
-        case 255:                      //decimal 255.
-          DEBUG_PRINTLN("ORP No Data");   //means there is no further data to send.
-          break;                       //exits the switch case.
+      //reset the array
+      for (i = 0; i < 20; i++) {
+        ORP_data[i] = 0;
       }
 
       while (Wire.available()) {         //are there bytes to receive.
@@ -74,6 +79,7 @@ void ORP_I2C() {
         }
       }
 
+      Serial.print("ORP data:");
       Serial.println(ORP_data);          //print the data.
     //}
     ORP_float = atof(ORP_data);

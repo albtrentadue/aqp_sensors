@@ -17,11 +17,12 @@
   along with ClEnSensors.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//TODO: Not sure these defines are working.
 //< --- Serial debug setup --- >
 #define DEBUG   // uncomment to enable serial debug
 #ifdef DEBUG
-#define DEBUG_PRINT(x) Serial.print (x)
-#define DEBUG_PRINTLN(x) Serial.println (x)
+#define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_PRINTLN(x) Serial.println(x)
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
@@ -65,7 +66,7 @@
 //#define SWSERIAL_TX 3
 
 // cycle counters 
-#define MAIN_CYCLE_DELAY 10    // The loop main cycle delay in millis
+#define MAIN_CYCLE_DELAY 1000  // The loop main cycle delay in millis
 #define CICLI_HEART 1          // Sets the loop() times per led toggle
 #define MEAS_INTERVAL 60000    // The time interval to send the measurs in milliseconds
 #define AVG_VALUES 5           // The number of values to be averaged per sample
@@ -75,9 +76,11 @@
 //EZO Dissolved Oxiygen Sensor from Atlas Scientific 
 //https://www.atlas-scientific.com/dissolved-oxygen.html
 #define DO_ADDRESS 97
-// < --------------- ORT I2C --------------- >
-#define ORP_ADDRESS 98               //default I2C ID number for EZO ORP Circuit.
+// < --------------- ORP I2C --------------- >
+//https://www.atlas-scientific.com/orp.html
+#define ORP_ADDRESS 98               
 // < --------------------------------------- >
+#define I2C_DATA_LENGTH 20
 #define SNS_READ_COMMAND 'R'
 #define SNS_CALIBRATE_COMMAND 'C'
 #define SNS_CAL_READ_TIME 1800
@@ -98,7 +101,8 @@
 
 // TODO: Configurable wifi settings
 #define WLAN_SSID       "FreeLepida_Fiorano"
-#define WLAN_PASS       ""
+#define WLAN_SSID       "NetGearSarAlb"
+#define WLAN_PASS       "p1nguin032"
 
 // ---- MQTT connection ---------
 // TODO: Configurable MQTT settings
@@ -141,9 +145,11 @@ dht11 DHT;
  */
 int DHT_temp = 0;
 int DHT_hum = 0;
-float DO_float;
+char ATS_data[I2C_DATA_LENGTH];  //20 byte character array to hold incoming data from the I2C sensor circuit.
+bool ATS_data_valid;             //This flag indicates that the value returned by the ATS sensor is valid
+float ATS_float;
+
 float DO_value = 0.0;
-float ORP_float;
 float ORP_value = 0.0;
 
 //The array holding the Dissolved Oxygen sensor data
@@ -186,25 +192,20 @@ SSD1306 display(0x3c, D3, D5);
 /* NODE SETUP */
 void setup() {
 
-#ifdef DEBUG
   Serial.begin(115200);
   delay(10);
-#endif
 
   Wire.begin(D3,D5);  //enable I2C port with pins (sda,scl)
 
   Serial.println(F("Adafruit MQTT Hydroponics"));
 
   // Connect to WiFi access point.
-  Serial.println(); Serial.println();
+  Serial.println();
   Serial.print("Connecting to ");
-  DEBUG_PRINTLN(WLAN_SSID);
+  Serial.print(WLAN_SSID);
 
   WiFi.begin(WLAN_SSID, WLAN_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
+  while (WiFi.status() != WL_CONNECTED) serial_dot();
   Serial.println();
 
   Serial.println("WiFi connected");
@@ -233,12 +234,14 @@ void setup() {
   //pinMode(EXT_LED, OUTPUT);  //Auxiliary led
 
   // Aligns to the start of the firts average cycle
-  while (! check_time2send()) delay(2000);
+  //Serial.println("Waiting the next time interval start...");
+  //while (! check_time2send()) serial_dot();
+  //Serial.println();
 }
 
 /* ---------- MAIN LOOP ---------- */
 void loop() {
-  //Serial.println("lol");
+  
   MQTT_connect();
 
   /* 
@@ -253,7 +256,7 @@ void loop() {
     } 
   }
   */
-
+    
   if (cnt_values < AVG_VALUES)  //Measures are collected only AVG_VALUES times
     collect_measures();
   else 
@@ -286,28 +289,28 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   In the this version, the following measurements are made
   - DHT11 temperature and humidity
-  - Atlas Scientific EZO Dissolved Oxygen values 
-  - Atlas Scientific EZO OxideRedux Product values 
+  - Atlas Scientific EZO Dissolved Oxygen values (ID=98)
+  - Atlas Scientific EZO OxideRedux Potential values (ID=97)
   
 */
 void collect_measures(){
 
   //Place here the functions that read the sensors and returns the
   //measures in dedicated global strings
-  
+  Serial.println("Collecting measures");
   // ----- DHT11  -----
   DHT.read(PIN_DHT11);
   DHT_temp += DHT.temperature;
   DHT_hum += DHT.humidity;
 
   // < ---------- ORP I2C ---------- >
-  // The ORP_float global var will hold the measure
-  ORP_I2C();
-  ORP_value += ORP_float;  
+  // The ATS_float global var will hold the measure
+  ATS_I2C(ORP_ADDRESS);
+  if (ATS_data_valid) ORP_value += ATS_float;  
   // < ---------- OXY I2C ---------- >
-  // The DO_float global var will hold the measure
-  OXY_I2C();
-  DO_value += DO_float;
+  // The ATS_float global var will hold the measure
+  ATS_I2C(DO_ADDRESS);
+  if (ATS_data_valid) DO_value += ATS_float;
 
   //Increase the values count
   cnt_values++;
@@ -367,6 +370,7 @@ void after_message() {
 */
 void heartbeat()
 {
+  Serial.println("heartbeat...");
   cnt_heart--;
   if (cnt_heart == 0) {
     heart++;
@@ -378,5 +382,12 @@ void heartbeat()
   }
 }
 
+/**
+ * Writes dots every 1/2 sec on serial
+ */
+void serial_dot() {
+  delay(1000);
+  Serial.print(".");
+}
 
 

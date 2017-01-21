@@ -26,17 +26,22 @@ void OXY_I2C() {
 
   switch (code) {                //switch case based on what the response code is.                                       
     case 1:
-      DEBUG_PRINTLN("Success");  //means the command was successful.
+      Serial.println("DO Success");  //means the command was successful.
       break;
     case 2:
-      DEBUG_PRINTLN("Failed");   //means the command has failed.
+      Serial.println("DO Failed");   //means the command has failed.
       break;
     case 254:
-      DEBUG_PRINTLN("Pending");  //means the command has not yet been finished calculating.
+      Serial.println("DO Pending");  //means the command has not yet been finished calculating.
       break;
     case 255:
-      DEBUG_PRINTLN("No Data");  //means there is no further data to send.
+      Serial.println("DO No Data");  //means there is no further data to send.
       break;
+  }
+
+  //reset the array
+  for (idx = 0; idx < 20; idx++) {
+    DO_data[idx] = 0;
   }
 
   while (Wire.available()) {     //are there bytes to receive.
@@ -57,11 +62,8 @@ void OXY_I2C() {
   }
   else { //if it’s not a number
     //print the data as debug
+    Serial.print("DO data:");
     Serial.println(DO_data);
-    //reset the array
-    for (idx = 0; idx < 20; idx++) {
-      DO_data[idx] = 0;
-    }
   } 
 }
 
@@ -93,9 +95,9 @@ void parse_oxygen_values() {
     DO = strtok(DO_data, ",");
     //Second part of the message
     sat = strtok(NULL, ",");                                              
-    Serial.print("DO:");
+    Serial.print("OXY:");
     Serial.println(DO);
-    Serial.print("Sat:");
+    Serial.print("OXY Sat:");
     Serial.println(sat);
     //Put the values into floating point
     DO_float=atof(DO);
