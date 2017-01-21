@@ -101,8 +101,7 @@
 
 // TODO: Configurable wifi settings
 #define WLAN_SSID       "FreeLepida_Fiorano"
-#define WLAN_SSID       "NetGearSarAlb"
-#define WLAN_PASS       "p1nguin032"
+#define WLAN_PASS       ""
 
 // ---- MQTT connection ---------
 // TODO: Configurable MQTT settings
