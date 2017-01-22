@@ -146,13 +146,9 @@ int DHT_temp = 0;
 int DHT_hum = 0;
 char ATS_data[I2C_DATA_LENGTH];  //20 byte character array to hold incoming data from the I2C sensor circuit.
 bool ATS_data_valid;             //This flag indicates that the value returned by the ATS sensor is valid
-float ATS_float;
-
+float ATS_float;                 //The global variable used to return the value measured by the ATS sensor
 float DO_value = 0.0;
 float ORP_value = 0.0;
-
-//The array holding the Dissolved Oxygen sensor data
-char DO_data[20]; 
 
 /* 
   Not used in this version 
@@ -232,7 +228,10 @@ void setup() {
   pinMode(LED_ONCARD, OUTPUT); //Heartbeat led
   //pinMode(EXT_LED, OUTPUT);  //Auxiliary led
 
-  // Aligns to the start of the firts average cycle
+  //FOR NOW: disables % of saturation reading from the ATS DO sensor
+  enable_DO_sat(DO_ADDRESS, '0');
+
+  //Aligns to the start of the firts average cycle
   //Serial.println("Waiting the next time interval start...");
   //while (! check_time2send()) serial_dot();
   //Serial.println();
@@ -304,11 +303,11 @@ void collect_measures(){
 
   // < ---------- ORP I2C ---------- >
   // The ATS_float global var will hold the measure
-  ATS_I2C(ORP_ADDRESS);
+  ATS_read(ORP_ADDRESS);
   if (ATS_data_valid) ORP_value += ATS_float;  
   // < ---------- OXY I2C ---------- >
   // The ATS_float global var will hold the measure
-  ATS_I2C(DO_ADDRESS);
+  ATS_read(DO_ADDRESS);
   if (ATS_data_valid) DO_value += ATS_float;
 
   //Increase the values count
