@@ -27,12 +27,17 @@ void ATS_I2C(int address, char *command, int wait_time) {
   // <----- Command ---->
   Serial.print("Command:");Serial.println(*command);      
   Serial.print("I2C address:");Serial.println(address);      
-  
-  Wire.beginTransmission(address); //call the circuit by its ID number.
-  Wire.write(command);            //transmit the command that was sent through the serial port.
-  Wire.endTransmission();              //end the I2C data transmission.
 
-  delay (wait_time);
+  //reset the array
+  for (i = 0; i < I2C_DATA_LENGTH; i++) {
+    ATS_data[i] = 0;
+  }
+  
+  Wire.beginTransmission(address);//call the circuit by its ID number.
+  Wire.write(command);            //transmit the command that was sent through the serial port.
+  Wire.endTransmission();         //end the I2C data transmission.
+
+  delay(wait_time);
   
   Wire.requestFrom(address, I2C_DATA_LENGTH, 1); //call the circuit and request 20 bytes (this may be more than we need)
   code = Wire.read();                   //the first byte is the response code, we read this separately.
@@ -55,11 +60,7 @@ void ATS_I2C(int address, char *command, int wait_time) {
       break;                            //exits the switch case.
   }
 
-  //reset the array
-  for (i = 0; i < I2C_DATA_LENGTH; i++) {
-    ATS_data[i] = 0;
-  }
-
+  i = 0;
   while (Wire.available()) {         //are there bytes to receive.
     in_char = Wire.read();           //receive a byte.
     ATS_data[i] = in_char;           //load this byte into our array.
@@ -84,8 +85,8 @@ void ATS_I2C(int address, char *command, int wait_time) {
 bool ATS_read(int address) {
 
   ATS_data_valid = false;
-  char the_command = 'r';
-  ATS_I2C(address, &the_command, SNS_CAL_READ_TIME);
+  char the_command[2] = {'R',0};  
+  ATS_I2C(address, the_command, SNS_CAL_READ_TIME);
 
   //If the first char is a number we know it is a DO reading, lets parse the DO reading
   if (isDigit(ATS_data[0])) {
@@ -137,10 +138,19 @@ void parse_ATS_values() {
  */
 void enable_DO_sat(int address, char enable) {
 
-  char the_command[5] = {'o',',','%',',','0'};
+  char the_command[6] = {'O',',','%',',','0',0};
   the_command[4] = enable;
   ATS_I2C(address, the_command, SNS_OTHER_TIME);  
   
 }
 
+/*
+ * Queries the status
+ */
+void ATS_query_status(int address) {
+
+  char the_command[7] = {'S','T','A','T','U','S',0};
+  ATS_I2C(address, the_command, SNS_OTHER_TIME);  
+  
+}
 

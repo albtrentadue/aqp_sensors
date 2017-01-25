@@ -66,7 +66,7 @@
 //#define SWSERIAL_TX 3
 
 // cycle counters 
-#define MAIN_CYCLE_DELAY 1000  // The loop main cycle delay in millis
+#define MAIN_CYCLE_DELAY 2000  // The loop main cycle delay in millis
 #define CICLI_HEART 1          // Sets the loop() times per led toggle
 #define MEAS_INTERVAL 60000    // The time interval to send the measurs in milliseconds
 #define AVG_VALUES 5           // The number of values to be averaged per sample
@@ -81,8 +81,6 @@
 #define ORP_ADDRESS 98               
 // < --------------------------------------- >
 #define I2C_DATA_LENGTH 20
-#define SNS_READ_COMMAND 'R'
-#define SNS_CALIBRATE_COMMAND 'C'
 #define SNS_CAL_READ_TIME 1800
 #define SNS_OTHER_TIME 300
 
@@ -304,12 +302,14 @@ void collect_measures(){
   // < ---------- ORP I2C ---------- >
   // The ATS_float global var will hold the measure
   ATS_read(ORP_ADDRESS);
-  if (ATS_data_valid) ORP_value += ATS_float;  
+  if (ATS_data_valid) ORP_value += ATS_float;
+  //ATS_query_status(ORP_ADDRESS); 
   // < ---------- OXY I2C ---------- >
   // The ATS_float global var will hold the measure
   ATS_read(DO_ADDRESS);
   if (ATS_data_valid) DO_value += ATS_float;
-
+  //ATS_query_status(DO_ADDRESS);
+  
   //Increase the values count
   cnt_values++;
 
