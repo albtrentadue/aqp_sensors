@@ -66,10 +66,10 @@
 //#define SWSERIAL_TX 3
 
 // cycle counters 
-#define MAIN_CYCLE_DELAY 2000  // The loop main cycle delay in millis
+#define MAIN_CYCLE_DELAY 1000  // The loop main cycle delay in millis
 #define CICLI_HEART 1          // Sets the loop() times per led toggle
-#define MEAS_INTERVAL 60000    // The time interval to send the measurs in milliseconds
-#define AVG_VALUES 5           // The number of values to be averaged per sample
+#define MEAS_INTERVAL 6000     // The time interval to send the measurs in milliseconds
+#define AVG_VALUES 1           // The number of values to be averaged per sample
                                // NOTE!! AVG_VALUES MUST BE LESS than the number of times 
                                // the duration of one loop(), in milliseconds, fits into MEAS_INTERVAL 
 
@@ -198,7 +198,7 @@ void setup() {
   Serial.print(WLAN_SSID);
 
   WiFi.begin(WLAN_SSID, WLAN_PASS);
-  while (WiFi.status() != WL_CONNECTED) serial_dot();
+  //while (WiFi.status() != WL_CONNECTED) serial_dot();
   Serial.println();
 
   Serial.println("WiFi connected");
@@ -238,7 +238,7 @@ void setup() {
 /* ---------- MAIN LOOP ---------- */
 void loop() {
   
-  MQTT_connect();
+  //MQTT_connect();
 
   /* 
    This is our 'wait for incoming subscription packets' busy subloop
@@ -296,8 +296,15 @@ void collect_measures(){
   Serial.println("Collecting measures");
   // ----- DHT11  -----
   DHT.read(PIN_DHT11);
-  DHT_temp += DHT.temperature;
-  DHT_hum += DHT.humidity;
+  int dht_temp_data = DHT.temperature;
+  DHT_temp += dht_temp_data;
+  int dht_hum_data = DHT.humidity;
+  DHT_hum += dht_hum_data;
+
+  Serial.print("DHT temp:");
+  Serial.println(dht_temp_data);   
+  Serial.print("DHT hum:");
+  Serial.println(dht_hum_data);   
 
   // < ---------- ORP I2C ---------- >
   // The ATS_float global var will hold the measure
