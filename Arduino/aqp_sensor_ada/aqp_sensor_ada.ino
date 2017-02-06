@@ -65,20 +65,20 @@
 //#define SWSERIAL_RX 2
 //#define SWSERIAL_TX 3
 
-// cycle counters 
+// cycle counters
 #define MAIN_CYCLE_DELAY 1000  // The loop main cycle delay in millis
 #define CICLI_HEART 1          // Sets the loop() times per led toggle
 #define MEAS_INTERVAL 6000     // The time interval to send the measurs in milliseconds
 #define AVG_VALUES 1           // The number of values to be averaged per sample
-                               // NOTE!! AVG_VALUES MUST BE LESS than the number of times 
-                               // the duration of one loop(), in milliseconds, fits into MEAS_INTERVAL 
+// NOTE!! AVG_VALUES MUST BE LESS than the number of times
+// the duration of one loop(), in milliseconds, fits into MEAS_INTERVAL
 
-//EZO Dissolved Oxiygen Sensor from Atlas Scientific 
+//EZO Dissolved Oxiygen Sensor from Atlas Scientific
 //https://www.atlas-scientific.com/dissolved-oxygen.html
 #define DO_ADDRESS 97
 // < --------------- ORP I2C --------------- >
 //https://www.atlas-scientific.com/orp.html
-#define ORP_ADDRESS 98               
+#define ORP_ADDRESS 98
 // < --------------------------------------- >
 #define I2C_DATA_LENGTH 20
 #define SNS_CAL_READ_TIME 1800
@@ -134,12 +134,12 @@ Adafruit_MQTT_Publish Conducibilita = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME 
 dht11 DHT;
 
 /*
- * The following global vars accumulate the values taken 
- * from sensors over the program cycles. The values are taken
- * from the sensors using different functions in the sketch.
- * At the last cycle, the values are divided by the number 
- * of measurement to send the average.
- */
+   The following global vars accumulate the values taken
+   from sensors over the program cycles. The values are taken
+   from the sensors using different functions in the sketch.
+   At the last cycle, the values are divided by the number
+   of measurement to send the average.
+*/
 int DHT_temp = 0;
 int DHT_hum = 0;
 char ATS_data[I2C_DATA_LENGTH];  //20 byte character array to hold incoming data from the I2C sensor circuit.
@@ -148,10 +148,10 @@ float ATS_float;                 //The global variable used to return the value 
 float DO_value = 0.0;
 float ORP_value = 0.0;
 
-/* 
-  Not used in this version 
-byte ext_led_on = 0;
- */
+/*
+  Not used in this version
+  byte ext_led_on = 0;
+*/
 byte heart = 0;               //holds the bit used to blink the ON BOARD led
 byte cnt_heart = CICLI_HEART; //loop() cycles for every led toggle
 
@@ -188,7 +188,7 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  Wire.begin(D3,D5);  //enable I2C port with pins (sda,scl)
+  Wire.begin(D3, D5); //enable I2C port with pins (sda,scl)
 
   Serial.println(F("Adafruit MQTT Hydroponics"));
 
@@ -198,22 +198,22 @@ void setup() {
   Serial.print(WLAN_SSID);
 
   WiFi.begin(WLAN_SSID, WLAN_PASS);
-  //while (WiFi.status() != WL_CONNECTED) serial_dot();
+  while (WiFi.status() != WL_CONNECTED) serial_dot();
   Serial.println();
 
   Serial.println("WiFi connected");
-  Serial.print("Local IP address: "); 
+  Serial.print("Local IP address: ");
   Serial.println(WiFi.localIP());
 
-  /* 
-     Setup MQTT subscription for command feed. 
-   */
+  /*
+     Setup MQTT subscription for command feed.
+  */
   // mqtt.subscribe(&onoffbutton);
   /*
      In future version we can implement a startup configuration function
      pushing the configuration prameters to Arduino that are stored in
      the EEPROM
-  */  
+  */
 
 #ifdef oled
   // Initialising the UI will init the display too.
@@ -237,37 +237,36 @@ void setup() {
 
 /* ---------- MAIN LOOP ---------- */
 void loop() {
-  
-  //MQTT_connect();
 
-  /* 
-   This is our 'wait for incoming subscription packets' busy subloop
-   try to spend your time here
+  MQTT_connect();
 
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(5000))) {
+  /*
+    This is our 'wait for incoming subscription packets' busy subloop
+    try to spend your time here
+
+    Adafruit_MQTT_Subscribe *subscription;
+    while ((subscription = mqtt.readSubscription(5000))) {
     if (subscription == &onoffbutton) {
       Serial.print(F("Got: "));
       Serial.println((char *)onoffbutton.lastread);
-    } 
-  }
+    }
+    }
   */
-    
+
   if (cnt_values < AVG_VALUES)  //Measures are collected only AVG_VALUES times
     collect_measures();
-  else 
-    if (check_time2send() ) {
-      send_message();
-      after_message();
-    }
+  else if (check_time2send() ) {
+    send_message();
+    after_message();
+  }
 
   heartbeat();
-  delay(MAIN_CYCLE_DELAY); 
+  delay(MAIN_CYCLE_DELAY);
 }
 
 /*
   Not used in this version
-void callback(char* topic, byte* payload, unsigned int length) {
+  void callback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT("Message arrived [");
   DEBUG_PRINT(topic);
   DEBUG_PRINT("] ");
@@ -277,7 +276,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINTLN();
 
   //if ((char)payload[0] == '1') {}
-}
+  }
 */
 
 /**
@@ -287,9 +286,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   - DHT11 temperature and humidity
   - Atlas Scientific EZO Dissolved Oxygen values (ID=98)
   - Atlas Scientific EZO OxideRedux Potential values (ID=97)
-  
+
 */
-void collect_measures(){
+void collect_measures() {
 
   //Place here the functions that read the sensors and returns the
   //measures in dedicated global strings
@@ -302,37 +301,37 @@ void collect_measures(){
   DHT_hum += dht_hum_data;
 
   Serial.print("DHT temp:");
-  Serial.println(dht_temp_data);   
+  Serial.println(dht_temp_data);
   Serial.print("DHT hum:");
-  Serial.println(dht_hum_data);   
+  Serial.println(dht_hum_data);
 
   // < ---------- ORP I2C ---------- >
   // The ATS_float global var will hold the measure
   ATS_read(ORP_ADDRESS);
   if (ATS_data_valid) ORP_value += ATS_float;
-  //ATS_query_status(ORP_ADDRESS); 
+  //ATS_query_status(ORP_ADDRESS);
   // < ---------- OXY I2C ---------- >
   // The ATS_float global var will hold the measure
   ATS_read(DO_ADDRESS);
   if (ATS_data_valid) DO_value += ATS_float;
   //ATS_query_status(DO_ADDRESS);
-  
+
   //Increase the values count
   cnt_values++;
 
 }
 
 /**
- * Returns true if the current time is longer than the specified
- * measurement time interval
- */
+   Returns true if the current time is longer than the specified
+   measurement time interval
+*/
 bool check_time2send() {
   unsigned long curr_time = millis() % MEAS_INTERVAL;
   bool is_time = (curr_time < prev_time);//This is true only on the modulo overflow of millis()
-                                         //so this happens approx every MEAS_INTERVAL milliseconds.
+  //so this happens approx every MEAS_INTERVAL milliseconds.
   prev_time = curr_time;
   return is_time;
-} 
+}
 
 /**
   Send a string message on the intended communication channel
@@ -361,10 +360,10 @@ void after_message() {
   DO_value = 0.0;
   DHT_temp = 0;
   DHT_hum = 0;
-  
+
   cnt_values = 0;
-  
-//to be used - if needed.
+
+  //to be used - if needed.
 #ifdef oled
   drawText();
 #endif
@@ -388,8 +387,8 @@ void heartbeat()
 }
 
 /**
- * Writes dots every 1/2 sec on serial
- */
+   Writes dots every 1/2 sec on serial
+*/
 void serial_dot() {
   delay(1000);
   Serial.print(".");

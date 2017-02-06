@@ -89,7 +89,7 @@ bool ATS_read(int address) {
   ATS_I2C(address, the_command, SNS_CAL_READ_TIME);
 
   //If the first char is a number we know it is a DO reading, lets parse the DO reading
-  if (isDigit(ATS_data[0])) {
+  if (isDigit(ATS_data[0]) || ((ATS_data[0] == '-') && (isDigit(ATS_data[1])))) {
     // Global vars for DO and Sat will be loaded by this function
     parse_ATS_values();
     ATS_data_valid = true;
@@ -118,7 +118,8 @@ void parse_ATS_values() {
 
   //if we see the there is a ‘,’ in the string array
   if (!comma) {
-    ATS_float = atof(ATS_data);    
+    ATS_float = atof(ATS_data); 
+    Serial.print("ATS_float: ");Serial.println(ATS_float);   
   } else {                                                        
     //First part of the message
     N1 = strtok(ATS_data, ",");
