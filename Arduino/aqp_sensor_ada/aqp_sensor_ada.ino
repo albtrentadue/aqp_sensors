@@ -51,8 +51,13 @@
 #include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
 #endif
 
-// < --- Include DHT11 library --->
-#include <dht11.h>
+// < --- Include DHT11 library Adafruit --->
+// you must instal Adafruit Unified Sensor
+#include "DHT.h"
+
+// < --- Include OneWire library --->
+#include <OneWire.h>  // https://goo.gl/Ygk5Id
+#include <DallasTemperature.h> // DS18B20  https://goo.gl/xmlB9d
 
 // < --- Include I2C library --->
 // https://goo.gl/xAgrmO
@@ -61,7 +66,10 @@
 // Node MCU 0.9 Pin mapping: https://goo.gl/bZ11wH
 #define LED_ONCARD D0         // The blue led on the Node MCU
 //#define EXT_LED 11
-#define PIN_DHT11 D2           // real D2 = 4
+// < ------ DHT22 ------ >
+#define DHTPIN D1           // real D1 = 5
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+#define ONE_WIRE_BUS D2        // real D2 = 4
 //#define SWSERIAL_RX 2
 //#define SWSERIAL_TX 3
 
@@ -98,6 +106,7 @@
 */
 
 // TODO: Configurable wifi settings
+// FreeLepida_Fiorano
 #define WLAN_SSID       "FreeLepida_Fiorano"
 #define WLAN_PASS       ""
 
@@ -126,12 +135,20 @@ Adafruit_MQTT_Publish PH = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/PH"
 
 Adafruit_MQTT_Publish Conducibilita = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Conducibilita");
 
+Adafruit_MQTT_Publish w_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/w_temperature");
+
 // Setup a feed called 'onoff' for subscribing to changes.
 // Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
 
 /************************************************************/
 
-dht11 DHT;
+DHT dht(DHTPIN, DHTTYPE);
+
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature.
+DallasTemperature sensors(&oneWire);
 
 /*
    The following global vars accumulate the values taken
@@ -140,8 +157,9 @@ dht11 DHT;
    At the last cycle, the values are divided by the number
    of measurement to send the average.
 */
-int DHT_temp = 0;
-int DHT_hum = 0;
+float DHT_temp = 0;
+float DHT_hum = 0;
+int W_TEMP = 0;
 char ATS_data[I2C_DATA_LENGTH];  //20 byte character array to hold incoming data from the I2C sensor circuit.
 bool ATS_data_valid;             //This flag indicates that the value returned by the ATS sensor is valid
 float ATS_float;                 //The global variable used to return the value measured by the ATS sensor
@@ -188,7 +206,14 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
+  // i2c
   Wire.begin(D3, D5); //enable I2C port with pins (sda,scl)
+
+  // 1Wire
+  sensors.begin(); // Pass our oneWire reference to Dallas Temperature.
+
+  // DHTXX
+  dht.begin();
 
   Serial.println(F("Adafruit MQTT Hydroponics"));
 
@@ -293,17 +318,27 @@ void collect_measures() {
   //Place here the functions that read the sensors and returns the
   //measures in dedicated global strings
   Serial.println("Collecting measures");
-  // ----- DHT11  -----
-  DHT.read(PIN_DHT11);
-  int dht_temp_data = DHT.temperature;
-  DHT_temp += dht_temp_data;
-  int dht_hum_data = DHT.humidity;
+
+  // < ----- DHT22  ----- >
+  // 2 seconds, its a very slow sensor
+  float dht_hum_data = dht.readHumidity();
   DHT_hum += dht_hum_data;
+  // Read temperature as Celsius (the default)
+  float dht_temp_data = dht.readTemperature();
+  DHT_temp += dht_temp_data;
 
   Serial.print("DHT temp:");
   Serial.println(dht_temp_data);
   Serial.print("DHT hum:");
   Serial.println(dht_hum_data);
+
+  // < ----- DS18B20 with Dallas Temperature Control Library ----- >
+  sensors.requestTemperatures(); // Send the command to get temperatures
+  int w_temp_data = sensors.getTempCByIndex(0); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+  W_TEMP += w_temp_data;
+
+  Serial.print("Water temp:");
+  Serial.println(w_temp_data);
 
   // < ---------- ORP I2C ---------- >
   // The ATS_float global var will hold the measure
@@ -346,6 +381,7 @@ void send_message() {
   diss_oxygen.publish(DO_value / AVG_VALUES);
   dht_temperature.publish(DHT_temp / AVG_VALUES);
   dht_humidity.publish(DHT_hum / AVG_VALUES);
+  w_temperature.publish(W_TEMP / AVG_VALUES);
 }
 
 /**
@@ -360,6 +396,7 @@ void after_message() {
   DO_value = 0.0;
   DHT_temp = 0;
   DHT_hum = 0;
+  W_TEMP = 0;
 
   cnt_values = 0;
 
