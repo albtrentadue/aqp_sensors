@@ -84,9 +84,12 @@
 //EZO Dissolved Oxiygen Sensor from Atlas Scientific
 //https://www.atlas-scientific.com/dissolved-oxygen.html
 #define DO_ADDRESS 97
+#define DO_CORR_OFFSET -0.5
 // < --------------- ORP I2C --------------- >
 //https://www.atlas-scientific.com/orp.html
 #define ORP_ADDRESS 98
+#define ORP_CORR_FACTOR -0.01797
+#define ORP_CORR_OFFSET 7.050
 // < --------------------------------------- >
 #define I2C_DATA_LENGTH 20
 #define SNS_CAL_READ_TIME 1800
@@ -341,14 +344,21 @@ void collect_measures() {
   Serial.println(w_temp_data);
 
   // < ---------- ORP I2C ---------- >
+  float corr_ats_value;
   // The ATS_float global var will hold the measure
   ATS_read(ORP_ADDRESS);
-  if (ATS_data_valid) ORP_value += ATS_float;
+  corr_ats_value = ATS_float * ORP_CORR_FACTOR + ORP_CORR_OFFSET;
+  Serial.print("pH value:");
+  Serial.println(corr_ats_value); 
+  if (ATS_data_valid) ORP_value += corr_ats_value;
   //ATS_query_status(ORP_ADDRESS);
   // < ---------- OXY I2C ---------- >
   // The ATS_float global var will hold the measure
   ATS_read(DO_ADDRESS);
-  if (ATS_data_valid) DO_value += ATS_float;
+  corr_ats_value = ATS_float + DO_CORR_OFFSET;
+  Serial.print("Oxy value:");
+  Serial.println(corr_ats_value); 
+  if (ATS_data_valid) DO_value += corr_ats_value;
   //ATS_query_status(DO_ADDRESS);
 
   //Increase the values count

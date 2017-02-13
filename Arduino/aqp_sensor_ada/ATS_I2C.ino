@@ -119,14 +119,14 @@ void parse_ATS_values() {
   //if we see the there is a ‘,’ in the string array
   if (!comma) {
     ATS_float = atof(ATS_data); 
-    Serial.print("ATS_float: ");Serial.println(ATS_float);   
+    //Serial.print("ATS_float: ");Serial.println(ATS_float);   
   } else {                                                        
     //First part of the message
     N1 = strtok(ATS_data, ",");
     //Second part of the message
     N2 = strtok(NULL, ",");                                              
-    Serial.print("ATS:N1:");Serial.println(N1);
-    Serial.print("ATS:N2:");Serial.println(N2);
+    //Serial.print("ATS:N1:");Serial.println(N1);
+    //Serial.print("ATS:N2:");Serial.println(N2);
     //Put the values into floating point
     ATS_float=atof(N1);
     //DO_sat_float=atof(N2);
