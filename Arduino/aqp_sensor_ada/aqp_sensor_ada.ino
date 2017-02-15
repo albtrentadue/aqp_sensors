@@ -46,7 +46,7 @@
             Library: https://goo.gl/5KHEsx
             we are using Upgrade from 2.0 to 3.0, https://goo.gl/3LljMv
 */
-//#define oled
+#define oled
 #ifdef oled
 #include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
 #endif
@@ -400,6 +400,11 @@ void send_message() {
   May even be empty.
 */
 void after_message() {
+  
+  //to be used - if needed.
+#ifdef oled
+  drawText();
+#endif
 
   //Resets all the measurement global vars and the avg counter
   ORP_value = 0.0;
@@ -409,11 +414,6 @@ void after_message() {
   W_TEMP = 0;
 
   cnt_values = 0;
-
-  //to be used - if needed.
-#ifdef oled
-  drawText();
-#endif
 }
 
 /**
