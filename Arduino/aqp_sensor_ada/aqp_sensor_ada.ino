@@ -40,6 +40,7 @@
 */
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
+bool connection_ok = false;
 
 // <--- Include the correct display library --->
 /*  ----> Display: SSD1306
@@ -108,10 +109,6 @@
   #define UNHANDLED 2
 */
 
-// TODO: Configurable wifi settings
-// FreeLepida_Fiorano
-#define WLAN_SSID       "FreeLepida_Fiorano"
-#define WLAN_PASS       ""
 
 // ---- MQTT connection ---------
 // TODO: Configurable MQTT settings
@@ -220,18 +217,34 @@ void setup() {
 
   Serial.println(F("Adafruit MQTT Hydroponics"));
 
+  // TODO: Configurable wifi settings
+  char* myStrings[] = {"FreeLepida_Fiorano", "", "AQP", "ca5ac0r51n1"};
+  #define num_wifi 2
   // Connect to WiFi access point.
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.print(WLAN_SSID);
 
-  WiFi.begin(WLAN_SSID, WLAN_PASS);
-  while (WiFi.status() != WL_CONNECTED) serial_dot();
-  Serial.println();
+  for (int i = 0; i < (num_wifi*2); i = i + 2) {
 
-  Serial.println("WiFi connected");
-  Serial.print("Local IP address: ");
-  Serial.println(WiFi.localIP());
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(myStrings[i]);
+    //Serial.print(myStrings[i + 1]);
+
+    WiFi.begin(myStrings[i], myStrings[i + 1]);
+    byte p = 0;
+    while ( WiFi.status() != WL_CONNECTED ) {
+      serial_dot();
+      p++;
+      if (p == 10) break;
+    }
+    if ( p < 10 ) {
+      Serial.println("WiFi connected");
+      Serial.print("Local IP address: ");
+      Serial.println(WiFi.localIP());
+      connection_ok = true;
+      break;
+    }
+  }
+
 
   /*
      Setup MQTT subscription for command feed.
@@ -266,7 +279,8 @@ void setup() {
 /* ---------- MAIN LOOP ---------- */
 void loop() {
 
-  MQTT_connect();
+if( connection_ok == true ) MQTT_connect();
+else Serial.println("Wifi NOT connected.");
 
   /*
     This is our 'wait for incoming subscription packets' busy subloop
@@ -349,7 +363,7 @@ void collect_measures() {
   ATS_read(ORP_ADDRESS);
   corr_ats_value = ATS_float * ORP_CORR_FACTOR + ORP_CORR_OFFSET;
   Serial.print("pH value:");
-  Serial.println(corr_ats_value); 
+  Serial.println(corr_ats_value);
   if (ATS_data_valid) ORP_value += corr_ats_value;
   //ATS_query_status(ORP_ADDRESS);
   // < ---------- OXY I2C ---------- >
@@ -357,7 +371,7 @@ void collect_measures() {
   ATS_read(DO_ADDRESS);
   corr_ats_value = ATS_float + DO_CORR_OFFSET;
   Serial.print("Oxy value:");
-  Serial.println(corr_ats_value); 
+  Serial.println(corr_ats_value);
   if (ATS_data_valid) DO_value += corr_ats_value;
   //ATS_query_status(DO_ADDRESS);
 
@@ -400,7 +414,7 @@ void send_message() {
   May even be empty.
 */
 void after_message() {
-  
+
   //to be used - if needed.
 #ifdef oled
   drawText();
