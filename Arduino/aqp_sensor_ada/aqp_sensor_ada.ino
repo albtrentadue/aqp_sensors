@@ -219,11 +219,10 @@ void setup() {
 
   // TODO: Configurable wifi settings
   char* myStrings[] = {"FreeLepida_Fiorano", "", "AQP", "ca5ac0r51n1"};
-  #define num_wifi 2
+#define num_wifi 2
   // Connect to WiFi access point.
 
-  for (int i = 0; i < (num_wifi*2); i = i + 2) {
-
+  for (int i = 0; i < (num_wifi * 2); i = i + 2) {
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(myStrings[i]);
@@ -279,8 +278,8 @@ void setup() {
 /* ---------- MAIN LOOP ---------- */
 void loop() {
 
-if( connection_ok == true ) MQTT_connect();
-else Serial.println("Wifi NOT connected.");
+  if ( connection_ok == true ) MQTT_connect();
+  else Serial.println("Wifi NOT connected.");
 
   /*
     This is our 'wait for incoming subscription packets' busy subloop
