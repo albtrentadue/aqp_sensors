@@ -32,6 +32,11 @@
 // <--- ESP8266 + WiFi libraries --->
 #include <ESP8266WiFi.h>
 
+// ----- Wifi Manager -----
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
 // <--- Include the correct MQTT Adafruit library --->
 /*  ----> MQTT Adafruit library: https://goo.gl/4ewcc2
             Adafruit tutorial: https://goo.gl/BVXdso
@@ -215,35 +220,19 @@ void setup() {
   // DHTXX
   dht.begin();
 
-  Serial.println(F("Adafruit MQTT Hydroponics"));
+  Serial.println(F("Adafruit MQTT HydraPonics"));
 
-  // TODO: Configurable wifi settings
-  char* myStrings[] = {"FreeLepida_Fiorano", "", "AQP", "ca5ac0r51n1"};
-#define num_wifi 2
-  // Connect to WiFi access point.
+  //---------- WiFiManager ----------
+  //Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
 
-  for (int i = 0; i < (num_wifi * 2); i = i + 2) {
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(myStrings[i]);
-    //Serial.print(myStrings[i + 1]);
+  //reset saved settings
+  //wifiManager.resetSettings();
 
-    WiFi.begin(myStrings[i], myStrings[i + 1]);
-    byte p = 0;
-    while ( WiFi.status() != WL_CONNECTED ) {
-      serial_dot();
-      p++;
-      if (p == 10) break;
-    }
-    if ( p < 10 ) {
-      Serial.println("WiFi connected");
-      Serial.print("Local IP address: ");
-      Serial.println(WiFi.localIP());
-      connection_ok = true;
-      break;
-    }
-  }
-
+  wifiManager.autoConnect("HydraPonics");
+  Serial.print("WiFi connected - Local IP address: ");
+  Serial.println(WiFi.localIP());
+  //--------------------
 
   /*
      Setup MQTT subscription for command feed.
